@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ViVa Prep
 
 A live AI examiner that prepares students to defend their own work. Upload a report, review 2-4 questions, hold a spoken mock viva, get a readiness report. Built to `SPEC.md`.
@@ -51,3 +52,6 @@ python -m scripts.smoke_stt --qdrant     # insert + filtered search
 - Proposed questions are stored `accepted=true` (the UI treats them as accepted by default, and this survives reloads).
 - Extra endpoints: `GET /api/documents/{id}/questions`, `GET /api/metrics` (average stage timings for the pitch).
 - Extra optional WebSocket message `speech_start` so the "repeat?" nudge never fires while the student is talking.
+=======
+# Viva-Preprartion
+>>>>>>> 1a4760516ff546ec6aff90c7da673f3babe23611
