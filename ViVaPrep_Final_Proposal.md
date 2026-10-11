@@ -1,8 +1,8 @@
 # ViVa Prep: A Live AI Examiner That Prepares Students to Defend Their Own Work
 
 **Event:** 4th International AI Championship (AIEF) | **Category:** Intelligent App Creation (AI-native apps with adaptive, intelligent UX)
-**Team:** [Team name] | **Members:** Sameer (UMT Lahore, BS IT, 7th semester) · [Member 2] · [Member 3] · [Member 4]
-**Repository / Demo:** [GitHub link] · [Live demo link]
+**Team:** VivaForge | **Members:** Sameer (UMT Lahore, BS IT, 7th semester) · Ali Hassan (UMT Lahore, BS IT, 7th semester) · Umair (UMT Lahore, BS IT, 7th semester) · Hammad (UMT Lahore, BS IT, 7th semester)
+**Repository / Demo:** https://github.com/AliHassanFaiz/Viva-prep.git 
 
 ---
 
@@ -10,9 +10,9 @@
 
 Students spend months on a thesis, final-year project, or research paper, then face a viva or defense that lasts less than an hour. Many freeze, ramble, or cannot justify decisions they made themselves. The reasons are simple:
 
-- **No realistic practice.** Friends are too kind, and supervisors have limited time.
-- **No feedback on weak spots.** Students do not know which parts of their own project they cannot defend.
-- **No pressure training.** Speaking clearly while being questioned is a skill that needs repetition, and typing answers into a chatbot does not build it.
+* **No realistic practice.** Friends are too kind, and supervisors have limited time.
+* **No feedback on weak spots.** Students do not know which parts of their own project they cannot defend.
+* **No pressure training.** Speaking clearly while being questioned is a skill that needs repetition, and typing answers into a chatbot does not build it.
 
 This affects every final-year student, and it is hardest for those without access to experienced mentors.
 
@@ -84,24 +84,24 @@ Pilot results will be reported with their limits (small sample, self-reported co
 
 ## 4. Target Users
 
-- **Primary:** Final-year undergraduate and master's students preparing for project defenses and thesis vivas.
-- **Secondary:** Students preparing for research presentations or interviews about a past project.
-- **Tertiary:** Supervisors who want to give students extra practice without extra time.
+* **Primary:** Final-year undergraduate and master's students preparing for project defenses and thesis vivas.
+* **Secondary:** Students preparing for research presentations or interviews about a past project.
+* **Tertiary:** Supervisors who want to give students extra practice without extra time.
 
 ## 5. Key Features / Deliverables
 
-- **Report upload** (PDF or Word) with section-aware reading and retrieval
-- **Question proposal screen** where the student sees 2 to 4 generated questions and accepts, edits, or removes them
-- **Live voice call** over WebSocket with Whisper transcription and a natural ElevenLabs voice
-- **Pause detection** that decides when the student has finished speaking, with a manual "I'm done" fallback
-- **Interruption handling (barge-in)** so the examiner stops speaking as soon as the student starts talking
-- **Pre-generated question audio** so the next question starts instantly after a clear answer
-- **Vagueness check** that triggers a single follow-up per question when needed, and replays the question if the student asks for it
-- **Saved transcript** written turn by turn, so a dropped connection does not lose the session
-- **Post-call evaluation** with a rubric covering accuracy against the report, completeness, clarity, and justification
-- **Readiness report** with per-question scores, strengths, gaps, and model answers
-- **Session history** stored in the database, so the student can reopen past sessions and compare practice rounds
-- **Delete my data** option for uploaded reports and sessions
+* **Report upload** (PDF or Word) with section-aware reading and retrieval
+* **Question proposal screen** where the student sees 2 to 4 generated questions and accepts, edits, or removes them
+* **Live voice call** over WebSocket with Whisper transcription and a natural ElevenLabs voice
+* **Pause detection** that decides when the student has finished speaking, with a manual "I'm done" fallback
+* **Interruption handling (barge-in)** so the examiner stops speaking as soon as the student starts talking
+* **Pre-generated question audio** so the next question starts instantly after a clear answer
+* **Vagueness check** that triggers a single follow-up per question when needed, and replays the question if the student asks for it
+* **Saved transcript** written turn by turn, so a dropped connection does not lose the session
+* **Post-call evaluation** with a rubric covering accuracy against the report, completeness, clarity, and justification
+* **Readiness report** with per-question scores, strengths, gaps, and model answers
+* **Session history** stored in the database, so the student can reopen past sessions and compare practice rounds
+* **Delete my data** option for uploaded reports and sessions
 
 ## 6. Implementation Plan & Timeline
 
@@ -118,22 +118,17 @@ If time runs short, cut in this order: interruption handling (replace with a "st
 
 ## 7. Resources or Requirements
 
-**Team:** 2–4 members covering backend and AI, frontend and voice, evaluation and pilot, and documentation/pitch.
+**Team:** 4 members covering backend and AI, frontend and voice, evaluation and pilot, and documentation/pitch.
 
 **Technology stack:**
-- Backend: FastAPI with WebSocket support, LangGraph for the examiner workflow (optional)
-- Language models (Groq): gpt-oss-20b (questions), gpt-oss-120b (live decision), qwen3.8-27b (final report)
-- Speech to text: Whisper large-v3-turbo (Groq)
-- Text to speech: ElevenLabs Flash v2.5 (or Turbo v2.5)
-- Retrieval: Qdrant Cloud with an open-source embedding model (bge-small-en-v1.5, run in the backend)
-- Storage: PostgreSQL (Neon)
-- Frontend: React with Vite, browser voice activity detection
-- Deployment: backend on a host that supports WebSockets (for example Railway or Render), frontend on Vercel, all over HTTPS (browsers require a secure connection for microphone access)
-
-**Other requirements:**
-- 3 to 5 real student reports (with permission) for testing, and volunteers for the pilot
-- Free-tier limits to plan around (verify on your own accounts): Groq lists 30 requests per minute and about 8K tokens per minute for the three language models and 20 requests per minute and 7,200 audio seconds per hour for Whisper; the ElevenLabs free plan has a small monthly character allowance
-- Headphones for the demo, and a recorded backup of a full session
+* Backend: FastAPI with WebSocket support, LangGraph for the examiner workflow (optional)
+* Language models (Groq): gpt-oss-20b (questions), gpt-oss-120b (live decision), qwen3.8-27b (final report)
+* Speech to text: Whisper large-v3-turbo (Groq)
+* Text to speech: ElevenLabs Flash v2.5 (or Turbo v2.5)
+* Retrieval: Qdrant Cloud with an open-source embedding model (bge-small-en-v1.5, run in the backend)
+* Storage: PostgreSQL (Neon)
+* Frontend: React with Vite, browser voice activity detection
+* Deployment: backend on a host that supports WebSockets (for example Railway or Render), frontend on Vercel, all over HTTPS (browsers require a secure connection for microphone access)
 
 ## 8. Potential Challenges or Risks
 
@@ -237,25 +232,19 @@ States: `IDLE → SPEAKING → LISTENING → THINKING → (SPEAKING or ENDED)`. 
 
 ### 9.5 Data model (PostgreSQL)
 
-- `documents`: id, user, filename, status, created time
-- `chunks`: id, document, text, section, page (vectors live in Qdrant)
-- `questions`: id, document, text, topic, key points, source chunks, accepted, order
-- `sessions`: id, document, user, status, started and ended times
-- `turns`: id, session, question, role, kind (question, answer, follow-up, follow-up answer), text, duration, interrupted
-- `evaluations`: id, session, question, scores, feedback, model answer
-- `readiness_reports`: session, overall score, summary
+* `documents`: id, user, filename, status, created time
+* `chunks`: id, document, text, section, page (vectors live in Qdrant)
+* `questions`: id, document, text, topic, key points, source chunks, accepted, order
+* `sessions`: id, document, user, status, started and ended times
+* `turns`: id, session, question, role, kind (question, answer, follow-up, follow-up answer), text, duration, interrupted
+* `evaluations`: id, session, question, scores, feedback, model answer
+* `readiness_reports`: session, overall score, summary
 
 For the prototype, users are identified by a simple anonymous ID (no login).
 
 ### 9.6 Expected delay and quotas (estimates, to be measured)
 
-- **Clear answer:** silence wait (about 1.2 to 1.5 s) + upload and transcription + one short model call; the next question plays from the cache. The filler clip covers the gap.
-- **Vague answer:** the same, plus the time for the first chunk of follow-up audio. ElevenLabs lists about 75 ms model latency for Flash v2.5 and about 250 to 300 ms for Turbo v2.5, before network and application delays.
-- We will log the time of each stage (speech end, transcript, decision, first audio) during testing and report the measured numbers, not these estimates.
-- A 4-question session needs roughly 4 to 8 transcription requests, up to 4 decision calls, 1 question-generation call, and about 5 evaluation calls, which fits the listed free limits for a single user but not for many simultaneous testers.
-
-### 9.7 Responsible use and eligibility
-- **Responsible use:** It is practice, not a prediction of the real examiner's questions. Reports are private, can be deleted, and are used only for the session.
-- **Impact:** It gives every student a realistic examiner on demand, which most students currently lack.
-- **Eligibility:** Team members must be in the 7th–8th semester or graduating in 2026. [Confirm each member's status before submitting.]
-- **Contact:** [Email] · [Phone] · GitHub: SameerHandsome
+* **Clear answer:** silence wait (about 1.2 to 1.5 s) + upload and transcription + one short model call; the next question plays from the cache. The filler clip covers the gap.
+* **Vague answer:** the same, plus the time for the first chunk of follow-up audio. ElevenLabs lists about 75 ms model latency for Flash v2.5 and about 250 to 300 ms for Turbo v2.5, before network and application delays.
+* We will log the time of each stage (speech end, transcript, decision, first audio) during testing and report the measured numbers, not these estimates.
+* A 4-question session needs roughly 4 to 8 transcription requests, up to 4 decision calls, 1 question-generation call, and about 5 evaluation calls, which fits the listed free limits for a single user but not for many simultaneous testers.
