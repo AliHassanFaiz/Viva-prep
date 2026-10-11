@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.env
+backend/viva_dev.db
+backend/tests/test.db
+node_modules/
+frontend/dist/
+frontend/public/vad/
