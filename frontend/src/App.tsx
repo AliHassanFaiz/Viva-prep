@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import CallPage from "./pages/CallPage";
 import HistoryPage from "./pages/HistoryPage";
-import QuestionsPage from "./pages/QuestionsPage";
 import ReportPage from "./pages/ReportPage";
 import UploadPage from "./pages/UploadPage";
 
@@ -11,7 +10,6 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<UploadPage />} />
-        <Route path="/documents/:id/questions" element={<QuestionsPage />} />
         <Route path="/session/:id/call" element={<CallPage />} />
         <Route path="/session/:id/report" element={<ReportPage />} />
         <Route path="/history" element={<HistoryPage />} />

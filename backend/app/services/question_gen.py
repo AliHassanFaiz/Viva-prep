@@ -11,15 +11,8 @@ from ..schemas import GeneratedQuestions
 from . import qdrant_store
 from .embeddings import embed_query
 from .groq_client import LLMError, chat_json
+from .modes import get_mode, norm_mode
 from .prompts import esc, fill, load
-
-PROBES = [
-    "research objective and problem statement",
-    "methodology and design choices",
-    "results and evaluation",
-    "limitations and future work",
-    "dataset, system architecture or implementation",
-]
 
 SCHEMA = {
     "type": "object",
@@ -36,9 +29,9 @@ SCHEMA = {
 }
 
 
-async def gather_passages(db: AsyncSession, document_id: uuid.UUID) -> list[Chunk]:
+async def gather_passages(db: AsyncSession, document_id: uuid.UUID, mode: str = "viva") -> list[Chunk]:
     ids: list[str] = []
-    for probe in PROBES:
+    for probe in get_mode(mode)["probes"]:
         vec = await embed_query(probe)
         for cid in await qdrant_store.search(str(document_id), vec, limit=1):
             if cid not in ids:
@@ -56,14 +49,15 @@ async def gather_passages(db: AsyncSession, document_id: uuid.UUID) -> list[Chun
     return chunks[:5]
 
 
-async def generate(db: AsyncSession, document_id: uuid.UUID, n: int) -> list[dict]:
+async def generate(db: AsyncSession, document_id: uuid.UUID, n: int, mode: str = "viva") -> list[dict]:
+    mode = norm_mode(mode)
     n = max(settings.QUESTIONS_MIN, min(settings.QUESTIONS_MAX, n))
-    chunks = await gather_passages(db, document_id)
+    chunks = await gather_passages(db, document_id, mode)
     if not chunks:
         raise LLMError("No passages available.")
     valid_ids = {str(c.id) for c in chunks}
     passages = "\n".join(f'<passage id="{c.id}">\n{esc(c.text[:1200])}\n</passage>' for c in chunks)
-    prompt = fill(load("question_gen"), n=str(n), passages=passages)
+    prompt = fill(load(f"question_gen_{mode}"), n=str(n), passages=passages, examiner=get_mode(mode)["examiner"])
 
     last: Exception | None = None
     for _ in range(2):  # one retry (SPEC)

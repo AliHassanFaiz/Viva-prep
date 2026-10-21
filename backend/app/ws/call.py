@@ -29,6 +29,7 @@ class Call:
         self.ws, self.session_id = ws, session_id
         self.questions: list[SessionQuestion] = []
         self.vocab_hint: str | None = None
+        self.mode = "viva"
         self.idx = 0
         self.followup_used = False
         self.state = IDLE
@@ -96,6 +97,7 @@ class Call:
                                                     .order_by(SessionQuestion.position))).scalars().all())
             doc = await db.get(Document, sess.document_id)
             self.vocab_hint = doc.vocab_hint if doc else None
+            self.mode = doc.mode if doc else "viva"
             turns = (await db.execute(select(Turn).where(Turn.session_id == self.session_id).order_by(Turn.seq))).scalars().all()
             self.status = sess.status
         self.seq = max([t.seq for t in turns], default=0)
@@ -284,7 +286,7 @@ class Call:
             passages = await self._passages(self.q)
             t0 = time.perf_counter()
             verdict = await decision_svc.decide(self.q.text, list(self.q.key_points or []), passages, text,
-                                                str(self.session_id), str(student_turn))
+                                                str(self.session_id), str(student_turn), self.mode)
             asyncio.create_task(self.merge_timings(student_turn, decision_ms=round((time.perf_counter() - t0) * 1000)))
 
             if verdict.verdict == "clear":

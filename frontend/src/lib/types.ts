@@ -1,10 +1,11 @@
+export type Mode = "viva" | "interview";
 export interface Question {
   id: string; position: number; text: string; topic: string | null; difficulty: string | null;
   key_points: string[]; accepted: boolean;
 }
 export interface SessionQuestion { session_question_id: string; position: number; text: string; audio_url: string | null }
-export interface SessionCreated { session_id: string; audio_ready: boolean; questions: SessionQuestion[]; static_audio: string[] }
-export interface DocumentInfo { id: string; filename: string; status: "processing" | "ready" | "failed"; error: string | null; page_count: number | null; chunk_count: number | null }
+export interface SessionCreated { session_id: string; mode: Mode; audio_ready: boolean; questions: SessionQuestion[]; static_audio: string[] }
+export interface DocumentInfo { id: string; filename: string; status: "processing" | "ready" | "failed"; error: string | null; page_count: number | null; chunk_count: number | null; mode: Mode }
 export type CallState = "idle" | "speaking" | "listening" | "thinking" | "ended";
 
 export interface Scores { accuracy: number; completeness: number; clarity: number; justification: number }
@@ -23,5 +24,5 @@ export interface Report {
 }
 export interface HistoryItem { id: string; created_at: string; document_name: string; status: string; overall_score: number | null; band: string | null }
 export interface SessionDetail {
-  id: string; status: string; document_name: string; audio_ready: boolean; static_audio: string[]; questions: SessionQuestion[];
+  id: string; status: string; document_name: string; mode: Mode; audio_ready: boolean; static_audio: string[]; questions: SessionQuestion[];
 }

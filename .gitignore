@@ -1,6 +1,11 @@
 __pycache__/
 *.pyc
 .env
+.venv/
+venv/
+.pytest_cache/
+.env.*
+!.env.example
 backend/viva_dev.db
 backend/tests/test.db
 node_modules/

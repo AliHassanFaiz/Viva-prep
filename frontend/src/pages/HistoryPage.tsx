@@ -30,7 +30,7 @@ export default function HistoryPage() {
       {error && <div className="alert error">{error}</div>}
       {!items && !error && <div className="card center"><span className="spinner lg" /></div>}
       {items && items.length === 0 && (
-        <div className="card center empty"><h3>No sessions yet</h3><p className="muted">Upload a report and run your first mock viva.</p><Link to="/" className="btn btn-primary">Get started</Link></div>
+        <div className="card center empty"><h3>No sessions yet</h3><p className="muted">Upload a document and run your first practice session.</p><Link to="/" className="btn btn-primary">Get started</Link></div>
       )}
       <div className="hlist">
         {items?.map((s) => (

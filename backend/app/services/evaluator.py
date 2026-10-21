@@ -10,9 +10,10 @@ from sqlalchemy import delete, select
 from ..config import settings
 from ..db import SessionLocal
 from ..logging_utils import log_stage, logger
-from ..models import Chunk, Evaluation, ReadinessReport, Session, SessionQuestion, Turn, now
+from ..models import Chunk, Document, Evaluation, ReadinessReport, Session, SessionQuestion, Turn, now
 from ..schemas import QuestionEval, SummaryOut
 from .groq_client import LLMError, chat_json
+from .modes import get_mode
 from .prompts import esc, fill, load
 
 _tasks: set[asyncio.Task] = set()
@@ -76,6 +77,8 @@ async def run_evaluation(session_id: uuid.UUID) -> None:
             sess = await db.get(Session, session_id)
             if sess is None:
                 return
+            doc = await db.get(Document, sess.document_id)
+            m = get_mode(doc.mode if doc else None)
             report = await db.get(ReadinessReport, session_id)
             if report is None:
                 report = ReadinessReport(session_id=session_id)
@@ -114,7 +117,8 @@ async def run_evaluation(session_id: uuid.UUID) -> None:
                     prompt = fill(load("evaluate_question"), question=q.text, key_points="; ".join(q.key_points or []),
                                   passages=passages, answer=esc(d["answer"][:1500]),
                                   followup=esc(d.get("followup", "none")),
-                                  followup_answer=esc(d.get("followup_answer", "none")[:1500]))
+                                  followup_answer=esc(d.get("followup_answer", "none")[:1500]),
+                                  person=m["person"], session=m["session"], source=m["source"], **m["rubric"])
                     parsed = None
                     for _ in range(2):  # validate, retry once on bad output
                         raw = await _llm_report(prompt, EVAL_SCHEMA, "viva_eval", "evaluate", session_id)
@@ -144,7 +148,7 @@ async def run_evaluation(session_id: uuid.UUID) -> None:
             overall = round(mean(answered_scores))
             summary = SummaryOut()
             try:
-                prompt = fill(load("summarize"), results=esc("\n\n".join(summary_rows)))
+                prompt = fill(load("summarize"), results=esc("\n\n".join(summary_rows)), person=m["person"], session=m["session"])
                 summary = SummaryOut.model_validate(await _llm_report(prompt, SUMMARY_SCHEMA, "viva_summary", "summarize", session_id))
             except Exception as e:
                 logger.error('{"stage":"summary_failed","error":"%s"}', type(e).__name__)

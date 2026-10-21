@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     MAX_PDF_PAGES: int = 150
 
     # --- tunable thresholds ---
-    SILENCE_END_MS: int = 1300
+    SILENCE_END_MS: int = 2500
     MIN_SPEECH_MS: int = 400
     BARGE_IN_MIN_MS: int = 300
     MAX_ANSWER_MS: int = 120000

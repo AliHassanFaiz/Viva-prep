@@ -39,6 +39,7 @@ class Document(Base):
     page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     chunk_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     vocab_hint: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mode: Mapped[str] = mapped_column(String(12), default="viva", server_default="viva")  # viva | interview
     created_at: Mapped[datetime] = _ts()
 
 

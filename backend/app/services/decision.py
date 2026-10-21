@@ -7,6 +7,7 @@ from ..config import settings
 from ..logging_utils import log_stage
 from ..schemas import Verdict
 from .groq_client import LLMError, chat_json
+from .modes import get_mode
 from .prompts import esc, fill, load
 
 SCHEMA = {
@@ -29,10 +30,11 @@ def _normalise(v: Verdict) -> Verdict:
 
 
 async def decide(question: str, key_points: list[str], passages: list[str], answer: str,
-                 session_id=None, turn_id=None) -> Verdict:
+                 session_id=None, turn_id=None, mode: str = "viva") -> Verdict:
     ps = [esc(p[:800]) for p in passages[:2]] + ["", ""]
     prompt = fill(load("decision"), question=question, key_points="; ".join(key_points),
-                  passages=f"<passage>{ps[0]}</passage>\n<passage>{ps[1]}</passage>", answer=esc(answer[:1200]))
+                  passages=f"<passage>{ps[0]}</passage>\n<passage>{ps[1]}</passage>", answer=esc(answer[:1200]),
+                  examiner=get_mode(mode)["examiner"], person=get_mode(mode)["person"])
     for model in (settings.MODEL_DECISION, settings.MODEL_DECISION_FALLBACK):
         try:
             raw = await chat_json(

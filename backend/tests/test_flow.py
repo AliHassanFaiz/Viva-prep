@@ -251,3 +251,28 @@ def test_resume_replays_current_question(client):
             if m["type"] == "play_cached":
                 break
         assert msgs[-1]["audio_ids"][0].startswith("q:") and "greeting" not in msgs[-1]["audio_ids"]
+
+
+def test_interview_mode(client, monkeypatch):
+    """mode=interview is stored on upload, drives the question prompt and is exposed on the session."""
+    from app.services import question_gen
+    seen = {}
+    orig = question_gen.chat_json
+
+    async def spy(**kw):
+        seen["prompt"] = kw["user"]
+        return await orig(**kw)
+
+    monkeypatch.setattr(question_gen, "chat_json", spy)
+    docx_mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    r = client.post("/api/documents", headers=H, data={"mode": "interview"}, files={"file": ("cv.docx", make_docx(), docx_mime)})
+    doc_id = r.json()["document_id"]
+    assert wait_ready(client, doc_id)["mode"] == "interview"
+    qs = client.post(f"/api/documents/{doc_id}/questions", headers=H, json={"n": 3}).json()["questions"]
+    assert "job interview" in seen["prompt"] or "interviewer" in seen["prompt"]
+    sc = client.post("/api/sessions", headers=H, json={"document_id": doc_id, "question_ids": [q["id"] for q in qs]}).json()
+    assert sc["mode"] == "interview"
+    assert client.get(f"/api/sessions/{sc['session_id']}", headers=H).json()["mode"] == "interview"
+    # unknown modes fall back to viva
+    r = client.post("/api/documents", headers=H, data={"mode": "bogus"}, files={"file": ("a.docx", make_docx(), docx_mime)})
+    assert wait_ready(client, r.json()["document_id"])["mode"] == "viva"

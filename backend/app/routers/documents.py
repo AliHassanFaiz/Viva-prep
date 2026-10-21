@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile
 from fastapi.responses import Response
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +13,7 @@ from ..models import Document, Question, Session, SessionQuestion
 from ..schemas import GenerateRequest
 from ..services import audio_store, ingest, qdrant_store, question_gen
 from ..services.groq_client import LLMError
+from ..services.modes import norm_mode
 from .questions import question_out
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
@@ -26,7 +27,7 @@ async def get_owned_doc(db: AsyncSession, doc_id: str, user_id: uuid.UUID) -> Do
 
 
 @router.post("", status_code=202)
-async def upload(background: BackgroundTasks, file: UploadFile = File(...),
+async def upload(background: BackgroundTasks, file: UploadFile = File(...), mode: str = Form("viva"),
                  user_id: uuid.UUID = Depends(get_user_id), db: AsyncSession = Depends(get_db)):
     name = (file.filename or "").strip()
     if not name.lower().endswith((".pdf", ".docx")):
@@ -37,7 +38,7 @@ async def upload(background: BackgroundTasks, file: UploadFile = File(...),
         raise APIError(400, "file_too_large", f"File is larger than {settings.MAX_UPLOAD_MB} MB.")
     if not data:
         raise APIError(400, "empty_file", "The file is empty.")
-    doc = Document(user_id=user_id, filename=name[:255], status="processing")
+    doc = Document(user_id=user_id, filename=name[:255], status="processing", mode=norm_mode(mode))
     db.add(doc)
     await db.commit()
     background.add_task(ingest.run_ingest, doc.id, name, data)
@@ -48,7 +49,7 @@ async def upload(background: BackgroundTasks, file: UploadFile = File(...),
 async def get_document(doc_id: str, user_id: uuid.UUID = Depends(get_user_id), db: AsyncSession = Depends(get_db)):
     d = await get_owned_doc(db, doc_id, user_id)
     return {"id": str(d.id), "filename": d.filename, "status": d.status, "error": d.error,
-            "page_count": d.page_count, "chunk_count": d.chunk_count}
+            "page_count": d.page_count, "chunk_count": d.chunk_count, "mode": d.mode}
 
 
 @router.post("/{doc_id}/questions")
@@ -60,7 +61,7 @@ async def generate_questions(doc_id: str, body: GenerateRequest | None = None,
                        (d.error or "The document could not be processed."))
     n = (body.n if body else 3)
     try:
-        items = await question_gen.generate(db, d.id, n)
+        items = await question_gen.generate(db, d.id, n, d.mode)
     except LLMError:
         raise APIError(502, "question_generation_failed", "Could not generate questions right now. Please try again.")
     await db.execute(delete(Question).where(Question.document_id == d.id))

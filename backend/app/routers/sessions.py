@@ -67,7 +67,7 @@ async def create_session(body: SessionCreate, user_id: uuid.UUID = Depends(get_u
     results = await asyncio.gather(*[_gen_audio(sq) for sq in sqs])
     sess.audio_ready = all(results)
     await db.commit()
-    return {"session_id": str(sess.id), "audio_ready": sess.audio_ready,
+    return {"session_id": str(sess.id), "audio_ready": sess.audio_ready, "mode": doc.mode,
             "questions": [_q_payload(sess.id, sq, ok) for sq, ok in zip(sqs, results)],
             "static_audio": STATIC_AUDIO_NAMES}
 
@@ -145,7 +145,7 @@ async def get_session(sid: str, user_id: uuid.UUID = Depends(get_user_id), db: A
     turns = (await db.execute(select(Turn).where(Turn.session_id == s.id).order_by(Turn.seq))).scalars().all()
     evs = (await db.execute(select(Evaluation).where(Evaluation.session_id == s.id))).scalars().all()
     return {
-        "id": str(s.id), "status": s.status, "document_name": doc.filename if doc else "",
+        "id": str(s.id), "status": s.status, "document_name": doc.filename if doc else "", "mode": doc.mode if doc else "viva",
         "created_at": s.created_at.isoformat(), "audio_ready": s.audio_ready, "static_audio": STATIC_AUDIO_NAMES,
         "questions": [_q_payload(s.id, sq, audio_store.get(str(sq.id)) is not None) for sq in sqs],
         "turns": [{"id": str(t.id), "seq": t.seq, "role": t.role, "kind": t.kind, "text": t.text,

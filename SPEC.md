@@ -118,7 +118,7 @@ Tunable thresholds (`config.py` and `lib/settings.ts`, with these defaults):
 
 | Name | Default | Meaning |
 |------|---------|---------|
-| `SILENCE_END_MS` | 1300 | Silence that ends an answer (try 1200 to 1500) |
+| `SILENCE_END_MS` | 2500 | Silence that ends an answer (1300 cut people off mid-thought; try 2000 to 3000) |
 | `MIN_SPEECH_MS` | 400 | Ignore shorter sounds |
 | `BARGE_IN_MIN_MS` | 300 | Speech must last this long to interrupt |
 | `MAX_ANSWER_MS` | 120000 | Hard cap per answer |

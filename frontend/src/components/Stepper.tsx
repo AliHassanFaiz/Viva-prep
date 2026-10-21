@@ -1,6 +1,6 @@
 import { IconCheck } from "./Icons";
 
-const STEPS = ["Upload", "Questions", "Practice", "Report"];
+const STEPS = ["Upload", "Ready", "Practice", "Report"];
 
 export default function Stepper({ current }: { current: 0 | 1 | 2 | 3 }) {
   return (

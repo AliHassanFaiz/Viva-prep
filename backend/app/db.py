@@ -56,3 +56,17 @@ async def init_db() -> None:
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_add_missing_columns)
+
+
+# (table, column, DDL type) added after the first release. create_all() does not alter existing tables.
+_NEW_COLUMNS = [("documents", "mode", "VARCHAR(12) NOT NULL DEFAULT 'viva'")]
+
+
+def _add_missing_columns(sync_conn) -> None:
+    from sqlalchemy import inspect, text
+
+    insp = inspect(sync_conn)
+    for table, column, ddl in _NEW_COLUMNS:
+        if table in insp.get_table_names() and column not in {c["name"] for c in insp.get_columns(table)}:
+            sync_conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))

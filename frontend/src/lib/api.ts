@@ -1,5 +1,5 @@
 import { API_URL } from "./settings";
-import type { DocumentInfo, HistoryItem, Question, Report, SessionCreated, SessionDetail } from "./types";
+import type { DocumentInfo, HistoryItem, Mode, Question, Report, SessionCreated, SessionDetail } from "./types";
 import { getUserId } from "./userId";
 
 export class ApiError extends Error {
@@ -26,9 +26,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  uploadDocument(file: File) {
+  uploadDocument(file: File, mode: Mode) {
     const fd = new FormData();
     fd.append("file", file);
+    fd.append("mode", mode);
     return request<{ document_id: string; status: string }>("/api/documents", { method: "POST", body: fd });
   },
   getDocument: (id: string) => request<DocumentInfo>(`/api/documents/${id}`),

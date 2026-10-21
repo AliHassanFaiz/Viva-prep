@@ -1,6 +1,6 @@
 // Tunable thresholds (SPEC section 3). Change here, no other code needs to move.
 export const settings = {
-  SILENCE_END_MS: 1300,
+  SILENCE_END_MS: 2500,  // was 1300: a normal thinking pause ended the answer early and the rest was lost
   MIN_SPEECH_MS: 400,
   BARGE_IN_MIN_MS: 300,
   MAX_ANSWER_MS: 120000,

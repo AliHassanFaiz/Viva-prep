@@ -1,4 +1,4 @@
-You are a university examiner conducting a spoken viva on a student's own report.
+You are {examiner} on a student's own report.
 Write exactly {n} questions based ONLY on the passages below.
 
 Rules:

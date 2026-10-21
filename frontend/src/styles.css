@@ -166,3 +166,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .empty { gap: 6px; }
 @media (max-width: 600px) { .qcard { grid-template-columns: auto 1fr; } .qactions { grid-column: 2; } .main { padding-top: 18px; } .sticky-inner { justify-content: center; } .tip { display: none; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+/* mode toggle (viva / interview) */
+.mode-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-bottom: 14px; }
+.mode-toggle button { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; text-align: left; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: var(--radius-s); background: var(--surface); color: inherit; cursor: pointer; font: inherit; transition: .15s; }
+.mode-toggle button small { color: var(--muted, #6b7280); font-size: .8rem; }
+.mode-toggle button.on { border-color: var(--primary); background: var(--primary-soft); }
+.mode-toggle button:disabled { opacity: .6; cursor: not-allowed; }
+.mode-toggle button:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent); outline-offset: 2px; }
+.upload-card.center { align-items: center; text-align: center; }

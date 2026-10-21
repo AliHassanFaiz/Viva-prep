@@ -7,6 +7,7 @@ import Stepper from "../components/Stepper";
 import { useCall } from "../hooks/useCall";
 import { api } from "../lib/api";
 import { isSessionLoaded, preloadSession } from "../lib/audio";
+import { MODE_COPY } from "../lib/modes";
 import { getAllowInterruptions, setAllowInterruptions } from "../lib/settings";
 import type { SessionDetail } from "../lib/types";
 
@@ -39,6 +40,7 @@ export default function CallPage() {
   });
 
   const total = session?.questions.length ?? 0;
+  const copy = MODE_COPY[session?.mode ?? "viva"];
   const inputRef = useRef<HTMLInputElement>(null);
 
   if (error) return <div className="page"><div className="alert error">{error}</div></div>;
@@ -53,16 +55,16 @@ export default function CallPage() {
         <section className="card lobby">
           <span className="drop-icon"><IconMic width={30} height={30} /></span>
           <h1>Ready when you are</h1>
-          <p className="lead">{total} questions about <b>{session.document_name}</b>. It feels like a real viva: no scoring during the call, your report comes at the end.</p>
+          <p className="lead">{total} questions about <b>{session.document_name}</b>. It feels like a real {copy.label.toLowerCase()}: no scoring during the call, your report comes at the end.</p>
           <ul className="tips">
             <li><IconHeadphones width={18} height={18} /> Wear headphones, and find a quiet spot.</li>
             <li><IconMic width={18} height={18} /> Allow the microphone when your browser asks. Typing works too.</li>
-            <li><IconShield width={18} height={18} /> Pause to think: the examiner waits for a natural gap before replying.</li>
+            <li><IconShield width={18} height={18} /> Pause to think: the {copy.examiner} waits for a natural gap before replying.</li>
           </ul>
           <label className="switch">
             <input type="checkbox" checked={allow} onChange={(e) => { setAllow(e.target.checked); setAllowInterruptions(e.target.checked); }} />
             <span className="slider" />
-            <span><b>Allow interruptions</b><small className="muted">Speak over the examiner to cut them off. Best with headphones.</small></span>
+            <span><b>Allow interruptions</b><small className="muted">Speak over the {copy.examiner} to cut them off. Best with headphones.</small></span>
           </label>
           {sessionStorage.getItem(`viva.voiceNote.${id}`) && <div className="alert info">Some audio isn't available, so your browser's built-in voice will read those questions.</div>}
           <button className="btn btn-primary btn-lg" onClick={() => void call.start()} disabled={connecting}>
@@ -93,7 +95,7 @@ export default function CallPage() {
 
           <div className="controls">
             {call.micOk && <button className="btn btn-primary" onClick={() => void call.finishSegment()} disabled={!listening}><IconStop width={16} height={16} /> I'm done answering</button>}
-            {call.state === "speaking" && <button className="btn btn-ghost" onClick={call.stopExaminer}><IconStop width={16} height={16} /> Stop examiner</button>}
+            {call.state === "speaking" && <button className="btn btn-ghost" onClick={call.stopExaminer}><IconStop width={16} height={16} /> Stop {copy.examiner}</button>}
             <button className="btn btn-ghost" onClick={() => { call.setTextFallback(!call.textFallback); setTimeout(() => inputRef.current?.focus(), 50); }}><IconKeyboard width={16} height={16} /> Type instead</button>
             {!confirmEnd
               ? <button className="btn btn-danger-ghost" onClick={() => setConfirmEnd(true)}><IconPhoneOff width={16} height={16} /> End call</button>
