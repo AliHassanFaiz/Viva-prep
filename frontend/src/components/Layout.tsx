@@ -1,6 +1,6 @@
-import { NavLink, Outlet, Link } from "react-router-dom";
+import { NavLink, Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { IconHistory, IconShield } from "./Icons";
+import { IconHistory, IconLogout, IconShield } from "./Icons";
 
 export function Logo() {
   return (
@@ -17,6 +17,7 @@ export function Logo() {
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const onAuthPage = /^\/(login|signup)\/?$/.test(useLocation().pathname);
   return (
     <div className="app">
       <header className="topbar">
@@ -26,10 +27,13 @@ export default function Layout() {
             <nav className="nav">
               <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>New practice</NavLink>
               <NavLink to="/history" className={({ isActive }) => (isActive ? "active" : "")}><IconHistory width={16} height={16} /> History</NavLink>
-              <span className="nav-user" title={user.email}>{user.email}</span>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={logout}>Log out</button>
+              <span className="nav-user" title={user.email}>
+                <span className="avatar" aria-hidden="true">{user.email.charAt(0).toUpperCase()}</span>
+                <span className="nav-email">{user.email}</span>
+              </span>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={logout} aria-label="Log out"><IconLogout width={16} height={16} /> <span className="nav-logout-text">Log out</span></button>
             </nav>
-          ) : (
+          ) : onAuthPage ? null : (
             <nav className="nav">
               <NavLink to="/login" className={({ isActive }) => (isActive ? "active" : "")}>Log in</NavLink>
               <NavLink to="/signup" className={({ isActive }) => (isActive ? "active" : "")}>Sign up</NavLink>

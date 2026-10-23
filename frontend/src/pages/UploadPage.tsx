@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { IconFile, IconHeadphones, IconMic, IconPlay, IconSpark, IconUpload } from "../components/Icons";
+import { IconBriefcase, IconCap, IconCheck, IconFile, IconHeadphones, IconMic, IconPlay, IconSpark, IconUpload } from "../components/Icons";
 import Stepper from "../components/Stepper";
 import { api, ApiError } from "../lib/api";
 import { preloadSession } from "../lib/audio";
@@ -9,6 +9,11 @@ import type { Mode } from "../lib/types";
 
 type Phase = "idle" | "uploading" | "processing" | "questions" | "ready" | "starting" | "error";
 const MAX_MB = 15;
+const STAGES: { key: Phase; label: string }[] = [
+  { key: "uploading", label: "Uploading your document" },
+  { key: "processing", label: "Reading and indexing it" },
+  { key: "questions", label: "Writing your questions" },
+];
 
 export default function UploadPage() {
   const nav = useNavigate();
@@ -41,7 +46,7 @@ export default function UploadPage() {
       const { document_id } = await api.uploadDocument(file, mode);
       setPhase("processing");
       for (;;) {
-        await new Promise((r) => setTimeout(r, 700));
+        await new Promise((r) => setTimeout(r, 500));
         if (cancelled.current) return;
         const d = await api.getDocument(document_id);
         if (d.status === "failed") throw new ApiError(422, "failed", d.error ?? "We couldn't read this file.");
@@ -74,7 +79,16 @@ export default function UploadPage() {
 
   const working = phase === "uploading" || phase === "processing" || phase === "questions";
   const showReady = (phase === "ready" || phase === "starting") && prepared;
-  const stepText = phase === "uploading" ? "Uploading your document..." : phase === "processing" ? "Reading and indexing your document..." : "Preparing your questions...";
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!working) { setElapsed(0); return; }
+    const t0 = Date.now();
+    const id = window.setInterval(() => setElapsed(Math.floor((Date.now() - t0) / 1000)), 1000);
+    return () => window.clearInterval(id);
+  }, [working]);
+  const stageIdx = STAGES.findIndex((s) => s.key === phase);
+  const stagesRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (working) stagesRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [working]);
 
   return (
     <div className="page">
@@ -106,7 +120,8 @@ export default function UploadPage() {
             {(Object.keys(MODE_COPY) as Mode[]).map((m) => (
               <button key={m} type="button" role="radio" aria-checked={mode === m} className={mode === m ? "on" : ""}
                 disabled={working} onClick={() => setMode(m)}>
-                <b>{MODE_COPY[m].label}</b><small>{MODE_COPY[m].blurb}</small>
+                <span className="mode-icon">{m === "viva" ? <IconCap width={18} height={18} /> : <IconBriefcase width={18} height={18} />}</span>
+                <span className="mode-text"><b>{MODE_COPY[m].label}</b><small>{MODE_COPY[m].blurb}</small></span>
               </button>
             ))}
           </div>
@@ -135,9 +150,20 @@ export default function UploadPage() {
           </div>
 
           {working && (
-            <div className="progress-line" role="status" aria-live="polite">
-              <span className="spinner" /> <span>{stepText}</span>
-              <div className="bar"><div className={`bar-fill ${phase}`} /></div>
+            <div className="stages" role="status" aria-live="polite" ref={stagesRef}>
+              <ol>
+                {STAGES.map((s, i) => {
+                  const state = i < stageIdx ? "done" : i === stageIdx ? "active" : "todo";
+                  return (
+                    <li key={s.key} className={state}>
+                      <span className="stage-mark">{state === "done" ? <IconCheck width={14} height={14} /> : state === "active" ? <span className="spinner" /> : null}</span>
+                      <span className="stage-label">{s.label}</span>
+                      {state === "active" && <small className="muted stage-time">{elapsed}s</small>}
+                    </li>
+                  );
+                })}
+              </ol>
+              <small className="muted">Usually 10 to 20 seconds. The first upload after the server starts takes a little longer.</small>
             </div>
           )}
           {error && <div className="alert error" role="alert">{error}</div>}

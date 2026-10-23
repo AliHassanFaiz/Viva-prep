@@ -129,12 +129,12 @@ async def get_report(sid: str, user_id: uuid.UUID = Depends(get_user_id), db: As
 @router.get("")
 async def list_sessions(user_id: uuid.UUID = Depends(get_user_id), db: AsyncSession = Depends(get_db)):
     rows = (await db.execute(
-        select(Session, Document.filename, ReadinessReport.overall_score, ReadinessReport.band)
+        select(Session, Document.filename, ReadinessReport.overall_score, ReadinessReport.band, Document.mode)
         .join(Document, Document.id == Session.document_id)
         .outerjoin(ReadinessReport, ReadinessReport.session_id == Session.id)
         .where(Session.user_id == user_id).order_by(Session.created_at.desc()))).all()
     return [{"id": str(s.id), "created_at": s.created_at.isoformat(), "document_name": fn, "status": s.status,
-             "overall_score": sc, "band": b} for s, fn, sc, b in rows]
+             "overall_score": sc, "band": b, "mode": m} for s, fn, sc, b, m in rows]
 
 
 @router.post("/{sid}/ws-token")

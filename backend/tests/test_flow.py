@@ -297,3 +297,11 @@ def test_interview_mode(client, monkeypatch):
     # unknown modes fall back to viva
     r = client.post("/api/documents", headers=H, data={"mode": "bogus"}, files={"file": ("a.docx", make_docx(), docx_mime)})
     assert wait_ready(client, r.json()["document_id"])["mode"] == "viva"
+
+
+def test_startup_warmup_is_safe_and_caches_probe_vectors(client):
+    """The background warm-up must never raise, and must leave the fixed search phrases embedded for both modes."""
+    from app.services import question_gen, warmup
+    client.portal.call(warmup.run)
+    assert {"viva", "interview"} <= set(question_gen._PROBE_VECS)
+    assert all(len(v) == 5 for v in question_gen._PROBE_VECS.values())  # one vector per search phrase

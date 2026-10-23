@@ -1,5 +1,6 @@
 """Question generation (SPEC 7 + 10.1)."""
 import asyncio
+import time
 import uuid
 
 from pydantic import ValidationError
@@ -7,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
-from ..logging_utils import logger
+from ..logging_utils import log_stage, logger
 from ..models import Chunk
 from ..schemas import GeneratedQuestions
 from . import qdrant_store
@@ -65,7 +66,9 @@ async def gather_passages(db: AsyncSession, user_id: uuid.UUID, document_id: uui
 async def generate(db: AsyncSession, user_id: uuid.UUID, document_id: uuid.UUID, n: int, mode: str = "viva") -> list[dict]:
     mode = norm_mode(mode)
     n = max(settings.QUESTIONS_MIN, min(settings.QUESTIONS_MAX, n))
+    t0 = time.perf_counter()
     chunks = await gather_passages(db, user_id, document_id, mode)
+    t_passages = time.perf_counter()
     if not chunks:
         raise LLMError("No passages available.")
     valid_ids = {str(c.id) for c in chunks}
@@ -87,6 +90,8 @@ async def generate(db: AsyncSession, user_id: uuid.UUID, document_id: uuid.UUID,
                 src = [s for s in q.source_chunk_ids if s in valid_ids] or [str(chunks[0].id)]
                 out.append({"text": q.question, "topic": q.topic, "difficulty": q.difficulty,
                             "key_points": [k.strip() for k in q.key_points if k.strip()][:4], "source_chunk_ids": src[:2]})
+            log_stage(None, None, "question_gen_breakdown", (time.perf_counter() - t0) * 1000,
+                      passages_ms=round((t_passages - t0) * 1000), llm_ms=round((time.perf_counter() - t_passages) * 1000))
             return out
         except (LLMError, ValidationError, ValueError) as e:
             last = e

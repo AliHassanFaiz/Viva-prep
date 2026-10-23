@@ -24,7 +24,7 @@ export interface Report {
   summary: { strengths: string[]; gaps: string[]; practice_next: string[]; overall_comment: string } | null;
   error: string | null; questions: ReportQuestion[];
 }
-export interface HistoryItem { id: string; created_at: string; document_name: string; status: string; overall_score: number | null; band: string | null }
+export interface HistoryItem { id: string; created_at: string; document_name: string; status: string; overall_score: number | null; band: string | null; mode?: Mode }
 export interface SessionDetail {
   id: string; status: string; document_name: string; mode: Mode; audio_ready: boolean; static_audio: string[]; questions: SessionQuestion[];
 }
