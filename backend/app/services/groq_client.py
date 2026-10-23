@@ -59,6 +59,8 @@ async def _with_retry(factory, timeout: float, stage: str, session_id=None, turn
                 break
         except (groq.APIConnectionError, groq.InternalServerError) as e:
             last = e
+            if attempt >= 1:  # fail fast: network/DNS problems rarely fix themselves in 1s
+                break
             await asyncio.sleep(0.5)
     logger.error('{"stage":"%s_gave_up","model":"%s","error":"%s"}', stage, model, type(last).__name__)
     raise LLMError(f"{stage} failed: {type(last).__name__}")
@@ -105,7 +107,8 @@ async def chat_json(*, model: str, system: str | None = None, user: str, schema:
             resp, _ = await _with_retry(call, timeout, stage, session_id, turn_id, model)
         except groq.BadRequestError as e:  # schema/param rejected by this model -> degrade
             last_err = e
-            logger.warning('{"stage":"%s_degrade","model":"%s"}', stage, model)
+            logger.warning('{"stage":"%s_degrade","model":"%s","detail":"%s"}', stage, model,
+                           str(getattr(e, "message", e))[:300].replace('"', "'").replace("\n", " "))
             continue
         except groq.APIStatusError as e:
             logger.error('{"stage":"%s_http_error","model":"%s","status":%s,"detail":"%s"}', stage, model, e.status_code,

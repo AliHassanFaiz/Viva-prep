@@ -80,7 +80,7 @@ async def generate(db: AsyncSession, user_id: uuid.UUID, document_id: uuid.UUID,
         try:
             raw = await chat_json(
                 model=settings.MODEL_QUESTIONS, user=prompt, schema=SCHEMA, schema_name="viva_questions", strict=True,
-                temperature=0.4, max_tokens=1200, reasoning_effort="low", stage="question_gen", timeout=max(settings.LLM_TIMEOUT_S, 30))
+                temperature=0.4, max_tokens=3000, reasoning_effort="low", stage="question_gen", timeout=max(settings.LLM_TIMEOUT_S, 30))
             parsed = GeneratedQuestions.model_validate(raw)
             items = parsed.questions[:n]
             if len(items) < settings.QUESTIONS_MIN:

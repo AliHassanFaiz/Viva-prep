@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from .services import embeddings, qdrant_store, question_gen
 from .config import settings
 from .db import init_db
 from .errors import register_error_handlers
@@ -12,10 +12,20 @@ from .services import warmup
 from .ws import call
 
 
+async def _warm_all():
+    await embeddings.warmup()  # load the embedding model first
+
+    async def probes():
+        for m in ("viva", "interview"):  # must match your real mode keys in modes.py
+            await question_gen._probe_vectors(m)
+
+    await asyncio.gather(qdrant_store.ensure_collection(), probes(), return_exceptions=True)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await init_db()
-    warm = asyncio.create_task(warmup.run())  # background: first upload no longer pays one-time setup costs
+    warm = asyncio.create_task(_warm_all())  # background: first request no longer pays cold-start cost
     yield
     warm.cancel()
 
