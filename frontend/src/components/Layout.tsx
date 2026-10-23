@@ -1,4 +1,5 @@
 import { NavLink, Outlet, Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { IconHistory, IconShield } from "./Icons";
 
 export function Logo() {
@@ -15,22 +16,32 @@ export function Logo() {
 }
 
 export default function Layout() {
+  const { user, logout } = useAuth();
   return (
     <div className="app">
       <header className="topbar">
         <div className="container topbar-inner">
           <Logo />
-          <nav className="nav">
-            <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>New practice</NavLink>
-            <NavLink to="/history" className={({ isActive }) => (isActive ? "active" : "")}><IconHistory width={16} height={16} /> History</NavLink>
-          </nav>
+          {user ? (
+            <nav className="nav">
+              <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>New practice</NavLink>
+              <NavLink to="/history" className={({ isActive }) => (isActive ? "active" : "")}><IconHistory width={16} height={16} /> History</NavLink>
+              <span className="nav-user" title={user.email}>{user.email}</span>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={logout}>Log out</button>
+            </nav>
+          ) : (
+            <nav className="nav">
+              <NavLink to="/login" className={({ isActive }) => (isActive ? "active" : "")}>Log in</NavLink>
+              <NavLink to="/signup" className={({ isActive }) => (isActive ? "active" : "")}>Sign up</NavLink>
+            </nav>
+          )}
         </div>
       </header>
       <main className="container main"><Outlet /></main>
       <footer className="footer">
         <div className="container footer-inner">
           <IconShield width={16} height={16} />
-          <span>Your report is private to this browser. The file itself is never stored, and you can delete your data any time from History.</span>
+          <span>Your data is private to your account. The file itself is never stored, and you can delete your data any time from History.</span>
         </div>
       </footer>
     </div>

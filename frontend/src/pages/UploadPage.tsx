@@ -41,7 +41,7 @@ export default function UploadPage() {
       const { document_id } = await api.uploadDocument(file, mode);
       setPhase("processing");
       for (;;) {
-        await new Promise((r) => setTimeout(r, 1500));
+        await new Promise((r) => setTimeout(r, 700));
         if (cancelled.current) return;
         const d = await api.getDocument(document_id);
         if (d.status === "failed") throw new ApiError(422, "failed", d.error ?? "We couldn't read this file.");

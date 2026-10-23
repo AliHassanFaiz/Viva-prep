@@ -1,6 +1,6 @@
 import { API_URL } from "./settings";
-import type { DocumentInfo, HistoryItem, Mode, Question, Report, SessionCreated, SessionDetail } from "./types";
-import { getUserId } from "./userId";
+import { getToken, notifyUnauthorized } from "./auth";
+import type { AuthResponse, AuthUser, DocumentInfo, HistoryItem, Mode, Question, Report, SessionCreated, SessionDetail } from "./types";
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message); }
@@ -8,7 +8,8 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
-  headers.set("X-User-Id", getUserId());
+  const token = getToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
   if (init.body && !(init.body instanceof FormData)) headers.set("Content-Type", "application/json");
   let res: Response;
   try {
@@ -16,6 +17,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   } catch {
     throw new ApiError(0, "network", "Can't reach the server. Check your connection and try again.");
   }
+  if (res.status === 401 && !path.startsWith("/api/auth/login") && !path.startsWith("/api/auth/signup")) notifyUnauthorized();
   if (res.status === 204) return undefined as T;
   let data: any = null;
   try { data = await res.json(); } catch { /* non-JSON body */ }
@@ -26,6 +28,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+  signup: (email: string, password: string) =>
+    request<AuthResponse>("/api/auth/signup", { method: "POST", body: JSON.stringify({ email, password }) }),
+  login: (email: string, password: string) =>
+    request<AuthResponse>("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  me: () => request<AuthUser>("/api/auth/me"),
+  wsToken: (sessionId: string) => request<{ token: string; expires_in: number }>(`/api/sessions/${sessionId}/ws-token`, { method: "POST" }),
   uploadDocument(file: File, mode: Mode) {
     const fd = new FormData();
     fd.append("file", file);
@@ -49,7 +57,8 @@ export const api = {
   endSession: (id: string) => request<{ status: string }>(`/api/sessions/${id}/end`, { method: "POST" }),
   async fetchAudio(url: string): Promise<Blob | null> {
     try {
-      const res = await fetch(url.startsWith("http") ? url : `${API_URL}${url}`, { headers: { "X-User-Id": getUserId() } });
+      const res = await fetch(url.startsWith("http") ? url : `${API_URL}${url}`, { headers: { Authorization: `Bearer ${getToken() ?? ""}` } });
+      if (res.status === 401) notifyUnauthorized();
       if (!res.ok) return null;
       const b = await res.blob();
       return b.size > 0 ? b : null;

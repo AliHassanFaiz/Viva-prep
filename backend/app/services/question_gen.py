@@ -1,4 +1,5 @@
 """Question generation (SPEC 7 + 10.1)."""
+import asyncio
 import uuid
 
 from pydantic import ValidationError
@@ -6,10 +7,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
+from ..logging_utils import logger
 from ..models import Chunk
 from ..schemas import GeneratedQuestions
 from . import qdrant_store
-from .embeddings import embed_query
+from .embeddings import embed_queries
 from .groq_client import LLMError, chat_json
 from .modes import get_mode, norm_mode
 from .prompts import esc, fill, load
@@ -29,16 +31,27 @@ SCHEMA = {
 }
 
 
-async def gather_passages(db: AsyncSession, document_id: uuid.UUID, mode: str = "viva") -> list[Chunk]:
+_PROBE_VECS: dict[str, list[list[float]]] = {}  # probes are constants per mode: embed once per process
+
+
+async def _probe_vectors(mode: str) -> list[list[float]]:
+    if mode not in _PROBE_VECS:
+        _PROBE_VECS[mode] = await embed_queries(list(get_mode(mode)["probes"]))
+    return _PROBE_VECS[mode]
+
+
+async def gather_passages(db: AsyncSession, user_id: uuid.UUID, document_id: uuid.UUID, mode: str = "viva") -> list[Chunk]:
+    vecs = await _probe_vectors(mode)
+    await qdrant_store.ensure_collection()  # once, before the parallel searches
+    results = await asyncio.gather(*(qdrant_store.search(str(user_id), str(document_id), v, limit=1) for v in vecs))
     ids: list[str] = []
-    for probe in get_mode(mode)["probes"]:
-        vec = await embed_query(probe)
-        for cid in await qdrant_store.search(str(document_id), vec, limit=1):
+    for found in results:  # keep probe order
+        for cid in found:
             if cid not in ids:
                 ids.append(cid)
     chunks: list[Chunk] = []
     if ids:
-        rows = (await db.execute(select(Chunk).where(Chunk.id.in_([uuid.UUID(i) for i in ids])))).scalars().all()
+        rows = (await db.execute(select(Chunk).where(Chunk.document_id == document_id, Chunk.id.in_([uuid.UUID(i) for i in ids])))).scalars().all()
         by_id = {str(c.id): c for c in rows}
         chunks = [by_id[i] for i in ids if i in by_id]
     if len(chunks) < 2:  # vector store empty or tiny doc: fall back to the first chunks in order
@@ -49,10 +62,10 @@ async def gather_passages(db: AsyncSession, document_id: uuid.UUID, mode: str = 
     return chunks[:5]
 
 
-async def generate(db: AsyncSession, document_id: uuid.UUID, n: int, mode: str = "viva") -> list[dict]:
+async def generate(db: AsyncSession, user_id: uuid.UUID, document_id: uuid.UUID, n: int, mode: str = "viva") -> list[dict]:
     mode = norm_mode(mode)
     n = max(settings.QUESTIONS_MIN, min(settings.QUESTIONS_MAX, n))
-    chunks = await gather_passages(db, document_id, mode)
+    chunks = await gather_passages(db, user_id, document_id, mode)
     if not chunks:
         raise LLMError("No passages available.")
     valid_ids = {str(c.id) for c in chunks}
@@ -64,7 +77,7 @@ async def generate(db: AsyncSession, document_id: uuid.UUID, n: int, mode: str =
         try:
             raw = await chat_json(
                 model=settings.MODEL_QUESTIONS, user=prompt, schema=SCHEMA, schema_name="viva_questions", strict=True,
-                temperature=0.4, max_tokens=1200, stage="question_gen", timeout=max(settings.LLM_TIMEOUT_S, 30))
+                temperature=0.4, max_tokens=1200, reasoning_effort="low", stage="question_gen", timeout=max(settings.LLM_TIMEOUT_S, 30))
             parsed = GeneratedQuestions.model_validate(raw)
             items = parsed.questions[:n]
             if len(items) < settings.QUESTIONS_MIN:
@@ -77,4 +90,6 @@ async def generate(db: AsyncSession, document_id: uuid.UUID, n: int, mode: str =
             return out
         except (LLMError, ValidationError, ValueError) as e:
             last = e
+            logger.warning('{"stage":"question_gen_attempt_failed","error":"%s","detail":"%s"}', type(e).__name__,
+                           str(e)[:200].replace('"', "'").replace("\n", " "))
     raise LLMError(f"Question generation failed: {type(last).__name__}")

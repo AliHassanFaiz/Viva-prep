@@ -9,6 +9,7 @@ from ..config import settings
 from ..db import get_db
 from ..deps import get_user_id, parse_uuid
 from ..errors import APIError
+from ..logging_utils import logger
 from ..models import Document, Question, Session, SessionQuestion
 from ..schemas import GenerateRequest
 from ..services import audio_store, ingest, qdrant_store, question_gen
@@ -41,7 +42,7 @@ async def upload(background: BackgroundTasks, file: UploadFile = File(...), mode
     doc = Document(user_id=user_id, filename=name[:255], status="processing", mode=norm_mode(mode))
     db.add(doc)
     await db.commit()
-    background.add_task(ingest.run_ingest, doc.id, name, data)
+    background.add_task(ingest.run_ingest, doc.id, user_id, name, data)
     return {"document_id": str(doc.id), "status": "processing"}
 
 
@@ -61,8 +62,9 @@ async def generate_questions(doc_id: str, body: GenerateRequest | None = None,
                        (d.error or "The document could not be processed."))
     n = (body.n if body else 3)
     try:
-        items = await question_gen.generate(db, d.id, n, d.mode)
-    except LLMError:
+        items = await question_gen.generate(db, d.user_id, d.id, n, d.mode)
+    except LLMError as e:
+        logger.error('{"stage":"question_generation_failed","detail":"%s"}', str(e)[:300].replace('"', "'"))
         raise APIError(502, "question_generation_failed", "Could not generate questions right now. Please try again.")
     await db.execute(delete(Question).where(Question.document_id == d.id))
     rows = [Question(document_id=d.id, position=i, text=it["text"], topic=it["topic"], difficulty=it["difficulty"],
@@ -89,7 +91,7 @@ async def purge_document(db: AsyncSession, doc: Document) -> None:
         audio_store.delete(str(i))
     await db.delete(doc)  # cascades: chunks, questions, sessions, ...
     await db.commit()
-    await qdrant_store.delete_document(str(doc.id))
+    await qdrant_store.delete_document(str(doc.user_id), str(doc.id))
 
 
 @router.delete("/{doc_id}", status_code=204)

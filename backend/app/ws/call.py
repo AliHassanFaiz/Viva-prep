@@ -15,6 +15,7 @@ from ..logging_utils import log_stage, logger
 from ..models import Chunk, Document, Session, SessionQuestion, Turn, now
 from ..services import decision as decision_svc
 from ..services import stt, tts
+from ..services.auth import decode_token
 from ..services.finish import finish_session
 from ..static_clips import STATIC_CLIPS
 
@@ -329,14 +330,21 @@ class Call:
 
 
 @router.websocket("/ws/call/{session_id}")
-async def call_ws(ws: WebSocket, session_id: str, user_id: str = Query(default="")):
+async def call_ws(ws: WebSocket, session_id: str, token: str = Query(default="")):
     origin = (ws.headers.get("origin") or "").rstrip("/")
     if origin and settings.origins and origin not in settings.origins and "*" not in settings.origins:
         await ws.close(code=4403)
         return
+    claims = decode_token(token, "ws")
+    if claims is None:
+        await ws.close(code=4401)  # missing, expired or wrong kind of token
+        return
     try:
-        sid, uid = uuid.UUID(session_id), uuid.UUID(user_id)
+        sid, uid = uuid.UUID(session_id), uuid.UUID(claims["sub"])
     except ValueError:
+        await ws.close(code=4404)
+        return
+    if claims.get("sid") != str(sid):  # the token was issued for a different session
         await ws.close(code=4404)
         return
     async with SessionLocal() as db:

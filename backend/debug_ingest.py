@@ -35,7 +35,7 @@ async def main(path: str):
     line("1. Reading + indexing the file (real ingest)")
     t = time.time()
     try:
-        await asyncio.wait_for(ingest.run_ingest(doc_id, name, data), 120)
+        await asyncio.wait_for(ingest.run_ingest(doc_id, uid, name, data), 120)
     except asyncio.TimeoutError:
         print("[STUCK] ingest did not finish in 120s")
         return

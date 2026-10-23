@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { audioCache, blobToBase64, encodeWav, textForAudioId } from "../lib/audio";
 import { settings, WS_URL } from "../lib/settings";
 import type { CallState, SessionQuestion } from "../lib/types";
-import { getUserId, newId } from "../lib/userId";
+import { api } from "../lib/api";
+import { newId } from "../lib/userId";
 import { CallSocket, type WsStatus } from "../lib/ws";
 import { useAudioQueue } from "./useAudioQueue";
 import { useVad } from "./useVad";
@@ -147,7 +148,10 @@ export function useCall({ sessionId, questions, allowInterruptions, onEnded }: O
       setMicError(e?.name === "NotAllowedError" ? "Microphone access was blocked. You can still type your answers."
         : "No microphone could be started. You can still type your answers.");
     }
-    const s = new CallSocket(`${WS_URL}/ws/call/${sessionId}?user_id=${getUserId()}`, {
+    const s = new CallSocket(async () => {
+      const { token } = await api.wsToken(sessionId);
+      return `${WS_URL}/ws/call/${sessionId}?token=${encodeURIComponent(token)}`;
+    }, {
       onMessage,
       onStatus: setWsStatus,
       onOpen: () => { setPhase("live"); s.send({ type: "start" }); },

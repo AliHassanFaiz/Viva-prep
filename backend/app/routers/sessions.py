@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import settings
 from ..db import get_db
 from ..deps import get_user_id, parse_uuid
+from ..services.auth import create_ws_token
 from ..errors import APIError
 from ..logging_utils import logger
 from ..models import Document, Evaluation, Question, ReadinessReport, Session, SessionQuestion, Turn
@@ -134,6 +135,13 @@ async def list_sessions(user_id: uuid.UUID = Depends(get_user_id), db: AsyncSess
         .where(Session.user_id == user_id).order_by(Session.created_at.desc()))).all()
     return [{"id": str(s.id), "created_at": s.created_at.isoformat(), "document_name": fn, "status": s.status,
              "overall_score": sc, "band": b} for s, fn, sc, b in rows]
+
+
+@router.post("/{sid}/ws-token")
+async def ws_token(sid: str, user_id: uuid.UUID = Depends(get_user_id), db: AsyncSession = Depends(get_db)):
+    # Short-lived token bound to this one session, used in the WebSocket URL (URLs get logged, headers do not).
+    s = await get_owned_session(db, sid, user_id)
+    return {"token": create_ws_token(user_id, s.id), "expires_in": settings.WS_TOKEN_TTL_S}
 
 
 @router.get("/{sid}")

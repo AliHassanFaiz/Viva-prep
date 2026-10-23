@@ -30,6 +30,20 @@ async def embed_passages(texts: list[str]) -> list[list[float]]:
     return out
 
 
+async def embed_queries(texts: list[str]) -> list[list[float]]:
+    """Embed several search queries in ONE worker-thread call."""
+    prefix = QUERY_PREFIX if "bge" in settings.EMBED_MODEL.lower() else ""
+    return await asyncio.to_thread(_embed_sync, [prefix + t for t in texts])
+
+
+async def warmup() -> None:
+    """Load the model at startup so the first upload does not pay the load time. Never raises."""
+    try:
+        await asyncio.to_thread(_embed_sync, ["warm up"])
+    except Exception:  # noqa: BLE001 - warm-up is best effort
+        pass
+
+
 async def embed_query(text: str) -> list[float]:
     prefix = QUERY_PREFIX if "bge" in settings.EMBED_MODEL.lower() else ""
     return (await asyncio.to_thread(_embed_sync, [prefix + text]))[0]

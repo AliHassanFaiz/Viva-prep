@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     DATABASE_URL: str = ""
     ALLOWED_ORIGINS: str = "http://localhost:5173"
 
+    # --- auth ---
+    JWT_SECRET: str = ""
+    JWT_EXPIRE_MINUTES: int = 60 * 24 * 7
+    WS_TOKEN_TTL_S: int = 90
+    PASSWORD_MIN_LEN: int = 8
+    LOGIN_MAX_FAILS: int = 8
+    LOGIN_WINDOW_S: int = 600
+
     # --- models ---
     MODEL_QUESTIONS: str = "openai/gpt-oss-20b"
     MODEL_DECISION: str = "openai/gpt-oss-120b"

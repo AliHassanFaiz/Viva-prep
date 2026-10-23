@@ -25,6 +25,9 @@ def _ts() -> Mapped[datetime]:
 class User(Base):
     __tablename__ = "users"
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    # nullable only so rows created by the old anonymous flow still load; new users always have both
+    email: Mapped[str | None] = mapped_column(String(320), unique=True, index=True, nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = _ts()
 
 

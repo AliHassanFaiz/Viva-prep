@@ -1,3 +1,5 @@
+export interface AuthUser { id: string; email: string }
+export interface AuthResponse { access_token: string; token_type: string; user: AuthUser }
 export type Mode = "viva" | "interview";
 export interface Question {
   id: string; position: number; text: string; topic: string | null; difficulty: string | null;

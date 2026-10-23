@@ -4,9 +4,30 @@ import uuid
 
 import pytest
 
-UID = str(uuid.uuid4())
-H = {"X-User-Id": UID}
-OTHER = {"X-User-Id": str(uuid.uuid4())}
+UID = ""
+H: dict = {}      # Bearer header of test user A, filled by the autouse fixture below
+OTHER: dict = {}  # Bearer header of test user B
+
+
+def signup(client, email, password="correct-horse-1"):
+    r = client.post("/api/auth/signup", json={"email": email, "password": password})
+    assert r.status_code == 201, r.text
+    body = r.json()
+    return {"Authorization": f"Bearer {body['access_token']}"}, body["user"]["id"]
+
+
+def ws_path(client, sid, headers=None):
+    tok = client.post(f"/api/sessions/{sid}/ws-token", headers=headers or H).json()["token"]
+    return f"/ws/call/{sid}?token={tok}"
+
+
+@pytest.fixture(autouse=True)
+def _users(client):
+    global UID
+    if not H:
+        h, UID = signup(client, "user-a@example.com")
+        H.update(h)
+        OTHER.update(signup(client, "user-b@example.com")[0])
 
 REPORT = (
     "Abstract\nThis project builds a retrieval augmented generation system for university students. " * 12
@@ -93,7 +114,7 @@ def wait_ready(client, doc_id, headers=H):
 def test_health_and_auth(client):
     assert client.get("/api/health").json() == {"ok": True}
     r = client.get("/api/sessions")
-    assert r.status_code == 400 and r.json()["error"]["code"] == "bad_user_id"
+    assert r.status_code == 401 and r.json()["error"]["code"] == "unauthorized"
 
 
 def test_upload_validation(client):
@@ -148,7 +169,7 @@ def test_full_flow(client):
     assert audio.status_code == 200 and audio.headers["content-type"] == "audio/mpeg"
 
     uid = UID
-    with client.websocket_connect(f"/ws/call/{sid}?user_id={uid}") as ws:
+    with client.websocket_connect(ws_path(client, sid)) as ws:
         def recv_until(t):
             seen = []
             for _ in range(40):
@@ -225,7 +246,7 @@ def test_full_flow(client):
 
     # WebSocket for someone else's session is refused
     with pytest.raises(Exception):
-        with client.websocket_connect(f"/ws/call/{sid}?user_id={uuid.uuid4()}") as bad:
+        with client.websocket_connect(f"/ws/call/{sid}?token=garbage") as bad:
             bad.receive_json()
 
     # delete cascade
@@ -239,11 +260,11 @@ def test_resume_replays_current_question(client):
     doc_id = r.json()["document_id"]; wait_ready(client, doc_id)
     questions = client.post(f"/api/documents/{doc_id}/questions", headers=H, json={"n": 2}).json()["questions"]
     sid = client.post("/api/sessions", headers=H, json={"document_id": doc_id, "question_ids": [q["id"] for q in questions]}).json()["session_id"]
-    with client.websocket_connect(f"/ws/call/{sid}?user_id={UID}") as ws:
+    with client.websocket_connect(ws_path(client, sid)) as ws:
         ws.send_json({"type": "start"})
         while ws.receive_json()["type"] != "play_cached":
             pass
-    with client.websocket_connect(f"/ws/call/{sid}?user_id={UID}") as ws:  # reconnect
+    with client.websocket_connect(ws_path(client, sid)) as ws:  # reconnect
         ws.send_json({"type": "start"})
         msgs = []
         while True:

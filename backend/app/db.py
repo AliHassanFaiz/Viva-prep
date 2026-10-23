@@ -60,7 +60,12 @@ async def init_db() -> None:
 
 
 # (table, column, DDL type) added after the first release. create_all() does not alter existing tables.
-_NEW_COLUMNS = [("documents", "mode", "VARCHAR(12) NOT NULL DEFAULT 'viva'")]
+_NEW_COLUMNS = [
+    ("documents", "mode", "VARCHAR(12) NOT NULL DEFAULT 'viva'"),
+    ("users", "email", "VARCHAR(320)"),
+    ("users", "password_hash", "TEXT"),
+]
+_NEW_INDEXES = [("ix_users_email", "users", "email")]  # unique; NULLs (legacy anonymous rows) are allowed
 
 
 def _add_missing_columns(sync_conn) -> None:
@@ -70,3 +75,5 @@ def _add_missing_columns(sync_conn) -> None:
     for table, column, ddl in _NEW_COLUMNS:
         if table in insp.get_table_names() and column not in {c["name"] for c in insp.get_columns(table)}:
             sync_conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
+    for name, table, column in _NEW_INDEXES:
+        sync_conn.execute(text(f"CREATE UNIQUE INDEX IF NOT EXISTS {name} ON {table} ({column})"))

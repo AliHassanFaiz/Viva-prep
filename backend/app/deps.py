@@ -1,32 +1,35 @@
 import uuid
 
 from fastapi import Depends, Header
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import get_db
 from .errors import APIError
 from .models import User
+from .services.auth import decode_token
+
+_KNOWN: set[uuid.UUID] = set()  # users already confirmed to exist: avoids a DB hit on every request
 
 
-async def ensure_user(db: AsyncSession, user_id: uuid.UUID) -> uuid.UUID:
-    if await db.get(User, user_id) is None:
-        db.add(User(id=user_id))
-        try:
-            await db.commit()
-        except Exception:  # concurrent upsert from a parallel request
-            await db.rollback()
-            if (await db.execute(select(User.id).where(User.id == user_id))).first() is None:
-                raise
-    return user_id
+def _unauthorized() -> APIError:
+    return APIError(401, "unauthorized", "Please log in to continue.")
 
 
-async def get_user_id(x_user_id: str | None = Header(default=None), db: AsyncSession = Depends(get_db)) -> uuid.UUID:
+async def get_user_id(authorization: str | None = Header(default=None), db: AsyncSession = Depends(get_db)) -> uuid.UUID:
+    scheme, _, token = (authorization or "").partition(" ")
+    claims = decode_token(token.strip(), "access") if scheme.lower() == "bearer" and token else None
+    if claims is None:
+        raise _unauthorized()
     try:
-        uid = uuid.UUID(x_user_id or "")
-    except ValueError:
-        raise APIError(400, "bad_user_id", "Missing or invalid X-User-Id header.")
-    return await ensure_user(db, uid)
+        uid = uuid.UUID(claims["sub"])
+    except (ValueError, KeyError):
+        raise _unauthorized()
+    if uid not in _KNOWN:
+        user = await db.get(User, uid)
+        if user is None:  # valid signature but the account is gone (e.g. database was reset)
+            raise _unauthorized()
+        _KNOWN.add(uid)
+    return uid
 
 
 def parse_uuid(value: str, what: str = "id") -> uuid.UUID:

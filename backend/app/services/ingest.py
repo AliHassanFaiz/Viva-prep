@@ -1,5 +1,6 @@
 """Upload -> parse -> chunk -> embed -> store (SPEC section 7)."""
 import asyncio
+import time
 import io
 import re
 import uuid
@@ -138,11 +139,12 @@ def parse_file(filename: str, data: bytes) -> tuple[list[Block], int]:
     return blocks, pages
 
 
-async def run_ingest(document_id: uuid.UUID, filename: str, data: bytes) -> None:
+async def run_ingest(document_id: uuid.UUID, user_id: uuid.UUID, filename: str, data: bytes) -> None:
     """Background task. The uploaded bytes are never stored; only extracted chunks are."""
-    doc_id = str(document_id)
+    doc_id, uid = str(document_id), str(user_id)
     try:
         with timed() as t:
+            marks = {"start": time.perf_counter()}
             blocks, pages = await asyncio.to_thread(parse_file, filename, data)
             chunks = chunk_blocks(blocks)
             if not chunks:
@@ -150,29 +152,35 @@ async def run_ingest(document_id: uuid.UUID, filename: str, data: bytes) -> None
             full_text = "\n".join(b.text for b in blocks)
             vocab = await asyncio.to_thread(build_vocab_hint, full_text)
             ids = [uuid.uuid4() for _ in chunks]
+            marks["parsed"] = time.perf_counter()
             vectors = await embed_passages([c.text for c in chunks])
+            marks["embedded"] = time.perf_counter()
             await qdrant_store.upsert_chunks(
-                doc_id,
+                uid, doc_id,
                 [{"chunk_id": str(i), "position": c.position, "section": c.section, "page": c.page}
                  for i, c in zip(ids, chunks)],
                 vectors)
+            marks["qdrant"] = time.perf_counter()
             async with SessionLocal() as db:
                 db.add_all([Chunk(id=i, document_id=document_id, position=c.position, section=c.section,
                                   page=c.page, text=c.text) for i, c in zip(ids, chunks)])
                 doc = await db.get(Document, document_id)
                 if doc is None:  # deleted while processing
-                    await qdrant_store.delete_document(doc_id)
+                    await qdrant_store.delete_document(uid, doc_id)
                     await db.rollback()
                     return
                 doc.status, doc.page_count, doc.chunk_count, doc.vocab_hint, doc.error = \
                     "ready", pages, len(chunks), vocab, None
                 await db.commit()
-        log_stage(None, None, "ingest", t["ms"], document_id=doc_id, chunks=len(chunks))
+        marks["db"] = time.perf_counter()
+        steps = ["start", "parsed", "embedded", "qdrant", "db"]
+        parts = {f"{b}_ms": round((marks[b] - marks[a]) * 1000) for a, b in zip(steps, steps[1:])}  # parse / embed / qdrant / db
+        log_stage(None, None, "ingest", t["ms"], document_id=doc_id, chunks=len(chunks), **parts)
     except IngestError as e:
         await _fail(document_id, str(e))
     except Exception as e:
         logger.error('{"stage":"ingest_failed","error":"%s","detail":"%s"}', type(e).__name__, str(e)[:200].replace('"', "'"))
-        await qdrant_store.delete_document(doc_id)
+        await qdrant_store.delete_document(uid, doc_id)
         await _fail(document_id, "Processing failed. Please try again.")
 
 

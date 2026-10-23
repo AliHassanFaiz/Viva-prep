@@ -175,3 +175,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .mode-toggle button:disabled { opacity: .6; cursor: not-allowed; }
 .mode-toggle button:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent); outline-offset: 2px; }
 .upload-card.center { align-items: center; text-align: center; }
+
+/* auth */
+.auth-card { max-width: 420px; margin: 24px auto; display: flex; flex-direction: column; gap: 14px; }
+.auth-card h1 { margin: 0; font-size: 1.6rem; }
+.auth-form { display: flex; flex-direction: column; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; font-weight: 550; font-size: .92rem; }
+.field input { padding: 11px 13px; border: 1.5px solid var(--line); border-radius: var(--radius-s); background: var(--surface); color: inherit; font: inherit; }
+.field input:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 45%, transparent); outline-offset: 1px; border-color: var(--primary); }
+.nav-user { color: var(--muted); font-size: .88rem; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; align-self: center; padding: 0 6px; }
+.btn-sm { padding: 6px 12px; font-size: .88rem; }
